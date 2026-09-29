@@ -151,10 +151,16 @@ A8   Run API + Orchestration        DONE
 A9   Canonical Normalization        DONE
 A10  Deterministic Assessment       DONE
 A11  Report / PDF Generation        CLOSED
-A12  Report History / Sharing       IMPLEMENTED / VALIDATION PENDING LOCAL EXECUTION
-A13  End-to-End Validation           PENDING
+A12  Report History / Sharing       CLOSED
+A13  End-to-End Validation           IMPLEMENTED / VALIDATION PENDING LOCAL EXECUTION
 A14  HONOR X9c Device Validation     PENDING
 ```
+
+### A13 — End-to-End Validation
+
+A13 validates the authoritative backend chain from Group-IB provider acquisition through normalization, classification, assessment, PDF generation, durable report persistence, report retrieval, and PDF download. External Group-IB calls are replaced by deterministic provider-boundary fixtures in automated tests; no live provider credentials or intelligence are required for the end-to-end test suite.
+
+Coverage includes successful authoritative completion, repeat classification, provider authentication failure, and invalid provider response handling.
 
 ### Evidence and Reporting
 
