@@ -190,7 +190,7 @@ def generate_report(db, run: RunModel) -> tuple[str, str]:
         title="Group-IB Threat Intelligence Report",
         author="APM",
     )
-    doc.pageCompression = 0\n    story = [
+    story = [
         Spacer(1, 10 * mm),
         Paragraph("GROUP-IB THREAT INTELLIGENCE REPORT", styles["title"]),
         _paragraph(f"Report Date: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}", styles["body"]),
