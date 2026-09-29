@@ -12,7 +12,7 @@ The backend owns Group-IB credentials and intelligence processing. The Android a
 
 ## Development status
 
-Architecture gates A1-A7 are locked. A8 establishes the executable run API and orchestration control plane.
+Architecture gates A1-A8 are locked. A9 establishes canonical Group-IB normalization and durable classification input.
 
 ## Security
 
@@ -20,9 +20,9 @@ Real `.env`, Group-IB credentials, Android signing keys, generated databases, an
 
 ## Current Architecture Gate
 
-**A8 — Run API + Orchestration — IMPLEMENTED / VALIDATED**
+**A9 — Canonical Normalization — IMPLEMENTED / VALIDATED**
 
-The backend exposes `POST /api/v1/runs` and `GET /api/v1/runs/{run_id}` with durable SQLite run state, idempotency handling, bounded Group-IB collection retries, pagination-loop protection, and explicit terminal failure/partial semantics. Canonical normalization remains a separate gate and is never fabricated as a successful stage.
+The backend exposes `POST /api/v1/runs` and `GET /api/v1/runs/{run_id}` with durable SQLite run state, idempotency handling, bounded Group-IB collection retries, pagination-loop protection, canonical normalization, deterministic seven-day classification input, and explicit terminal failure/partial semantics. Assessment and PDF generation remain later gates.
 
 ## Validation
 
