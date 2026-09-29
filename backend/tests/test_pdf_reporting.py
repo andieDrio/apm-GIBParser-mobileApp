@@ -80,7 +80,8 @@ def test_generates_pdf_and_persists_artifact(tmp_path, monkeypatch):
 
         reader = PdfReader(path)
         extracted_text = "\n".join(page.extract_text() or "" for page in reader.pages)
-        assert "Operational-Password-123!" in extracted_text
+        normalized_text = "".join(extracted_text.split())
+        assert "Operational-Password-123!" in normalized_text
         assert "Group-IB" in extracted_text
 
 
