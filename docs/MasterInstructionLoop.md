@@ -153,7 +153,7 @@ A10  Deterministic Assessment       DONE
 A11  Report / PDF Generation        CLOSED
 A12  Report History / Sharing       CLOSED
 A13  End-to-End Validation           CLOSED
-A14  HONOR X9c Device Validation     PENDING
+A14  HONOR X9c Device Validation     IMPLEMENTED / VALIDATION PENDING DEVICE
 ```
 
 ### A13 — End-to-End Validation
@@ -171,6 +171,21 @@ A13 executable local validation is complete:
 ```
 
 The warning is the existing Starlette deprecation notice from FastAPI's TestClient dependency path; it did not affect test success. A13 is therefore closed with deterministic provider-boundary end-to-end coverage and no live Group-IB credentials required.
+
+### A14 — HONOR X9c Device Validation
+
+A14 has a native Android/Compose implementation baseline on remote `main`. Device validation is not considered closed until executable Android build/install validation and HONOR X9c runtime checks are completed.
+
+Required device validation:
+- Gradle sync/build succeeds with the current Android toolchain;
+- debug APK installs on HONOR X9c;
+- application launches without crash;
+- backend URL can be configured and HTTPS validation rejects insecure transport;
+- `GENERATE GIB REPORT` creates a backend run and displays lifecycle progress;
+- successful run retrieves the PDF;
+- View / Share / Save PDF work through content URIs and Storage Access Framework;
+- report history retrieves successful reports;
+- no Group-IB credential appears in the APK, logs, UI, or report.
 
 ### Evidence and Reporting
 
