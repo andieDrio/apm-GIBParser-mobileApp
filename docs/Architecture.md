@@ -6,7 +6,7 @@
 
 Purpose:
 
-```text
+```
 OPEN APP
   ↓
 RUN GROUP-IB COLLECTION
@@ -42,7 +42,7 @@ The existing `andieDrio/apm-GIBParser` repository is reference-only and must not
 
 ## Security Boundary
 
-```text
+```
 HONOR X9c
    │ HTTPS/TLS
    ▼
@@ -57,7 +57,7 @@ The Group-IB token must never be embedded in the APK, returned to the mobile cli
 
 ## Authoritative Backend Flow
 
-```text
+```
 COLLECTING
   ↓
 NORMALIZING
@@ -77,7 +77,7 @@ Terminal incomplete states are `FAILED` and `PARTIAL`. A `SUCCEEDED` run is auth
 
 Authoritative tables:
 
-```text
+```
 runs
 reports
 compromise_history
@@ -94,7 +94,7 @@ Database uniqueness is authoritative for logical history and run/report record a
 
 Endpoints:
 
-```text
+```
 POST /api/v1/runs
 GET  /api/v1/runs/{run_id}
 GET  /api/v1/status
@@ -118,7 +118,7 @@ Rules:
 
 Classification:
 
-```text
+```
 Unknown + usable event <= 7 days   -> NEW
 Unknown + older/future/missing      -> OLD_HISTORICAL
 Known + same fingerprint            -> REPEAT
@@ -149,8 +149,6 @@ Activity level is derived only from NEW records:
 | 6–10 | 0–5 | HIGH |
 | above those thresholds | above those thresholds | CRITICAL |
 
-The rules are fixed and executable; no subjective scoring is introduced.
-
 ### Assessment Confidence
 
 - **HIGH**: no normalization warnings and a previous baseline is available.
@@ -173,41 +171,98 @@ Every assessment persists:
 - Recommended Analyst Attention
 - Assessment Basis
 
-The assessment must explicitly distinguish observed Group-IB intelligence from conclusions that cannot be established from absence of data.
-
 If zero NEW records are observed, the assessment must never state or imply that the environment is safe.
 
-### Deterministic Analyst Attention
+## A11 — Report / PDF Generation
 
-When NEW records exist, attention includes:
-- review affected compromised accounts;
-- follow the affected service's credential-reset/session-invalidation procedure;
-- correlate endpoint telemetry for observed infostealer families when present;
-- correlate victim IPs with available telemetry when present.
+A11 makes the PDF artifact part of the authoritative run lifecycle.
 
-When no NEW records exist:
-- continue routine monitoring;
-- explicitly avoid treating absence of NEW Group-IB records as proof of no compromise.
+### Generation Contract
 
-### A10 Run Behavior
+After assessment:
 
-After classification:
-
-```text
-CLASSIFYING
-   ↓
+```
 ASSESSING
    ↓
-persist AssessmentModel
+GENERATING_REPORT
    ↓
-PARTIAL / REPORT_GENERATION_PENDING
+render ReportLab PDF to temporary file
+   ↓
+atomically persist final PDF
+   ↓
+persist ReportModel metadata
+   ↓
+SUCCEEDED
 ```
 
-The run remains `PARTIAL` until the later PDF/report gate is implemented. A10 therefore does not falsely claim a successful end-to-end report.
+A PDF is never reported as successful before the final artifact exists.
+
+### PDF Contents
+
+Page 1:
+- report title and report date
+- Quick View
+- Activity Level
+- Assessment Confidence
+- records retrieved
+- NEW compromises
+- affected domains
+- infostealer families
+- seven-day NEW compromise trend
+- operational note
+
+Page 2+:
+- Executive Summary
+- Daily Threat Assessment
+- Facts
+- Key Observations
+- Recommended Analyst Attention
+- Assessment Basis
+- NEW Compromised Accounts
+- OLD / HISTORICAL records
+- Collection / Data Quality
+- Run Metadata
+
+Account table includes:
+- Compromised Date
+- Date Detected
+- First Seen
+- Last Seen
+- Victim's Domain
+- Victim's Login
+- Password
+- Victim IP
+- Source
+- Malware
+- Threat Actor
+- Source Link as the final dedicated column
+
+Operational passwords may be included because this is an explicitly requested reporting field. Provider credentials, authorization headers, session cookies, and application secrets must never be included.
+
+Every page footer:
+```
+Page X                         Prepared by: APM
+```
+
+### PDF Failure Rules
+
+- missing assessment → report generation fails safely;
+- ReportLab/rendering error → no successful run;
+- temporary artifacts are removed on failure;
+- no incomplete PDF is presented as authoritative;
+- report path is generated from a server-controlled report UUID, not user input.
+
+### A11 Validation
+
+Required tests cover:
+- valid PDF generation;
+- PDF artifact persistence;
+- operational password presence;
+- missing-assessment failure;
+- deterministic report sections and data source mapping.
 
 ## Later Gates
 
-- A11 — Report/PDF generation
 - A12 — Report history and mobile sharing/saving
 - A13 — End-to-end validation
 - A14 — HONOR X9c device validation

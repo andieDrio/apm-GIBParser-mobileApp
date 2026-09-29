@@ -6,13 +6,10 @@ from datetime import datetime, timedelta, timezone
 from threading import Lock
 from typing import Callable
 
-from sqlalchemy import select
-
 from app.core.config import settings
 from app.db.assessment import save_assessment
 from app.db.history import classify_and_persist, get_history
-from app.db.models import CompromiseHistoryModel
-from app.db.repository import get_run, transition_run
+from app.db.repository import get_run, save_report, transition_run
 from app.db.session import SessionLocal
 from app.domain.assessment import build_assessment
 from app.domain.classification import Classification
@@ -21,6 +18,7 @@ from app.groupib.client import (
     GroupIBAuthenticationError, GroupIBClient, GroupIBConfigurationError,
     GroupIBRateLimitError, GroupIBSchemaError, GroupIBUnavailableError,
 )
+from app.reporting.pdf import generate_report
 
 TERMINAL_STATUSES = {"SUCCEEDED", "FAILED", "PARTIAL"}
 PROGRESS = {"QUEUED": 0, "COLLECTING": 20, "NORMALIZING": 40, "CLASSIFYING": 60,
@@ -105,13 +103,15 @@ class RunOrchestrator:
                 run = get_run(db, run_id)
                 if run is None:
                     return
-                transition_run(
-                    db, run, "PARTIAL",
-                    records_classified=len(classified),
-                    completed_at=datetime.now(timezone.utc),
-                    error_code="REPORT_GENERATION_PENDING",
-                    error_message="Deterministic assessment completed, but PDF report generation is not enabled yet.",
-                )
+                transition_run(db, run, "GENERATING_REPORT")
+
+                report_id, pdf_path = generate_report(db, run)
+                save_report(db, run_id=run_id, report_id=report_id, pdf_path=pdf_path)
+                run = get_run(db, run_id)
+                if run is None:
+                    return
+                transition_run(db, run, "SUCCEEDED", completed_at=datetime.now(timezone.utc),
+                               error_code=None, error_message=None)
             except GroupIBConfigurationError as exc:
                 self._fail(db, run_id, "GROUPIB_NOT_CONFIGURED", str(exc))
             except GroupIBAuthenticationError as exc:
@@ -123,7 +123,7 @@ class RunOrchestrator:
             except GroupIBUnavailableError as exc:
                 self._fail(db, run_id, "GROUPIB_UNAVAILABLE", str(exc))
             except Exception:
-                self._fail(db, run_id, "RUN_EXECUTION_FAILED", "Run execution failed.")
+                self._fail(db, run_id, "REPORT_GENERATION_FAILED", "Run execution failed during report generation.")
 
     def _collect_with_retry(self) -> list[dict]:
         last_error: GroupIBUnavailableError | None = None

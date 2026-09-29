@@ -2,47 +2,38 @@
 
 ## Permanent Development Contract
 
-This document is a mandatory baseline for every development, refactoring, architecture-gate, bug-fix, and validation cycle.
+This single document is the governing development instruction for the entire project. It incorporates the former Master Instruction and replaces `docs/MasterInstruction.md`.
 
-### 1. Source of Truth
+### Source of Truth
 
-GitHub repository:
+Repository:
 
-```text
+```
 andieDrio/apm-GIBParser-mobileApp
 branch: main
 ```
 
-`main` is the only implementation source of truth.
+GitHub `main` is the only implementation source of truth. The existing `andieDrio/apm-GIBParser` repository is reference-only and must remain untouched unless explicitly requested.
 
-The existing `andieDrio/apm-GIBParser` repository is reference-only and must remain untouched unless the user explicitly requests otherwise.
+### Mandatory Pre-Execution Reading
 
-### 2. Mandatory Pre-Execution Reading
+Before every development, refactoring, architecture-gate, bug-fix, or validation cycle, read:
 
-Before every execution of project changes, read:
-
-```text
+```
 README.md
 docs/Architecture.md
-docs/MasterInstruction.md
 docs/MasterInstructionLoop.md
 ```
 
-Then inspect the actual current implementation on `main`.
+Then fetch the current remote `main` and inspect the actual implementation.
 
-Never rely on:
-- stale SHAs;
-- previous chat conclusions;
-- old screenshots;
-- downloaded archives;
-- previous generated code;
-- assumptions about the current tree.
+Never rely on stale SHAs, previous chat conclusions, old screenshots, downloaded archives, previous generated code, or assumptions about the current tree.
 
-### 3. Development Loop
+### Mandatory Development Loop
 
 Always execute:
 
-```text
+```
 READ BASELINE .MD FILES
         ↓
 FETCH CURRENT main
@@ -53,7 +44,7 @@ IDENTIFY HIGHEST-PRIORITY UNFINISHED GATE
         ↓
 ROOT-CAUSE ANALYSIS
         ↓
-STATE THE REQUIRED CHANGE INTERNALLY
+STATE REQUIRED CHANGE INTERNALLY
         ↓
 SURGICAL PRODUCTION-GRADE PATCH
         ↓
@@ -70,36 +61,34 @@ REPORT EXACT PULL COMMAND
 NEXT GATE
 ```
 
-### 4. Change Discipline
+### Change Discipline
 
 - Make the smallest coherent production-grade change.
 - Do not rewrite whole files unless required.
 - Preserve existing UI/design unless explicitly requested.
-- Do not introduce unnecessary dependencies.
-- Do not perform unrelated cleanup.
-- Do not create mock intelligence or fake telemetry.
+- Do not introduce unnecessary dependencies or unrelated cleanup.
+- Do not create mock intelligence, fake telemetry, or fabricated Group-IB fields.
 - Do not present placeholders as real capabilities.
-- Do not fabricate Group-IB fields.
-- Prefer null/empty plus data-quality evidence over invented values.
-- Preserve backward-compatible contracts unless the architecture gate explicitly changes them.
+- Missing data remains explicit/null/empty with data-quality evidence where applicable.
+- Preserve contracts unless the current architecture gate explicitly changes them.
+- Only one highest-priority gate is advanced at a time unless a dependency requires a coordinated change.
 
-### 5. Security Requirements
+### Security Requirements
 
 Always enforce:
-- backend-only Group-IB credentials;
+- Group-IB credentials backend-only;
 - no secrets in source control;
-- no token/header/cookie leakage;
+- no token/header/cookie leakage in logs, API responses, or reports;
 - strict input validation;
-- parameterized database operations;
-- safe error messages;
-- authorization boundaries where applicable;
-- no plaintext secret logging;
+- parameterized/safe database operations;
+- safe, non-sensitive error messages;
 - secure Android credential storage;
-- safe PDF sharing through content URIs.
+- server-controlled PDF paths;
+- Android PDF sharing through content URIs.
 
-### 6. Validation Requirements
+### Validation Requirements
 
-Do not claim a gate is validated without executable evidence.
+A gate is not validated without executable evidence.
 
 At minimum, when applicable:
 
@@ -110,20 +99,13 @@ python -m pytest -q
 
 For Android gates, also use the appropriate Gradle build/test/device validation available in the repository.
 
-Validation must cover:
-- happy path;
-- invalid input;
-- missing data;
-- duplicate/repeat execution;
-- error paths;
-- security-sensitive paths;
-- deterministic output where required.
+Validation must cover happy path, invalid input, missing data, duplicate/repeat execution, error paths, security-sensitive paths, and deterministic output where required.
 
-### 7. GitHub Commit Discipline
+### GitHub Commit Discipline
 
-Preferred workflow:
+Preferred direct-to-main workflow:
 
-```text
+```
 current main
    ↓
 create blobs
@@ -146,39 +128,48 @@ After a successful commit, verify:
 - changed files;
 - validation evidence.
 
-### 8. Architecture Gate Discipline
+### Architecture Gate Discipline
 
-Only one highest-priority gate should be advanced at a time unless a dependency requires a coordinated change.
-
-Current gate:
-
-```text
-A10 — Deterministic Daily Threat Assessment
-```
-
-After A10 is closed, the next gate is A11.
-
-A gate is closed only when:
+Gate closure requires:
 1. implementation exists on remote `main`;
 2. required tests pass;
 3. documentation baseline is updated;
 4. remote SHA is verified;
 5. no known contradiction remains between implementation and architecture documentation.
 
-### 9. Evidence and Reporting
+Current status:
+
+```
+A1   Security Boundary             LOCKED
+A2   Backend API Contract          LOCKED
+A3   Domain & Data Model           LOCKED
+A4   Group-IB Adapter              LOCKED
+A5   Run Orchestration             LOCKED
+A6   Implementation Foundation     DONE
+A7   SQLite Persistence             DONE
+A8   Run API + Orchestration        DONE
+A9   Canonical Normalization        DONE
+A10  Deterministic Assessment       DONE
+A11  Report / PDF Generation        IN PROGRESS
+A12  Report History / Sharing       PENDING
+A13  End-to-End Validation           PENDING
+A14  HONOR X9c Device Validation     PENDING
+```
+
+### Evidence and Reporting
 
 Every development response must state:
 - gate addressed;
 - actual changes;
-- validation performed;
+- executable validation performed;
 - commit SHA;
-- current remote main SHA;
+- current remote `main` SHA;
 - next highest-priority gate.
 
 Do not claim work was pushed unless remote `main` was actually verified.
 
-### 10. Continuity Rule
+### Continuity
 
-If a chat ends or a new chat begins, resume from the verified remote `main` state, then reread all baseline Markdown documents before continuing.
+If a chat ends or a new chat begins, resume from the verified remote `main` state, then reread this document and `docs/Architecture.md` before continuing.
 
 The current repository is always more authoritative than remembered conversation state.
