@@ -278,9 +278,39 @@ Only `SUCCEEDED` reports are exposed as authoritative report history. History is
 
 Missing reports and missing artifacts return structured errors without exposing internal filesystem details.
 
+## A13 — End-to-End Validation
+
+A13 validates the complete backend reporting lifecycle using deterministic provider-boundary fixtures:
+
+```text
+Provider acquisition
+  ↓
+Normalization
+  ↓
+Classification
+  ↓
+Assessment
+  ↓
+PDF generation
+  ↓
+Report persistence
+  ↓
+Run status / report API
+  ↓
+PDF download
+```
+
+Required end-to-end assertions include:
+- successful runs become `SUCCEEDED` only after report persistence;
+- run status exposes the persisted report ID;
+- latest-report and PDF-download endpoints resolve the authoritative report;
+- repeated identical provider observations classify as `REPEAT` and preserve the baseline;
+- authentication failures become `FAILED / GROUPIB_AUTH_FAILED` with no report;
+- provider schema failures become `FAILED / GROUPIB_INVALID_RESPONSE` with no report;
+- no live Group-IB credential is required by automated A13 tests.
+
 ## Later Gates
 
-- A13 — End-to-end validation
 - A14 — HONOR X9c device validation
 
 ## Baseline Rule
