@@ -17,7 +17,6 @@ Every implementation cycle must read:
 ```text
 README.md
 docs/Architecture.md
-docs/MasterInstruction.md
 docs/MasterInstructionLoop.md
 ```
 
@@ -25,7 +24,7 @@ GitHub `main` is the only implementation source of truth.
 
 ## Development status
 
-Architecture gates A1-A9 are locked. A10 establishes deterministic Daily Threat Assessment.
+Architecture gates A1-A10 are closed. A11 establishes authoritative ReportLab PDF generation.
 
 ## Security
 
@@ -33,11 +32,11 @@ Real `.env`, Group-IB credentials, Android signing keys, generated databases, an
 
 ## Current Architecture Gate
 
-**A10 — Deterministic Daily Threat Assessment — IMPLEMENTED / VALIDATED**
+**A11 — Report / PDF Generation — IMPLEMENTED / VALIDATION PENDING LOCAL EXECUTION**
 
 The backend now evaluates classified canonical records using fixed, auditable rules. Assessment output includes Activity Level, Assessment Confidence, Facts, Key Observations, Assessment, Recommended Analyst Attention, and Assessment Basis. No LLM is used for the assessment.
 
-A run intentionally remains `PARTIAL / REPORT_GENERATION_PENDING` until the later PDF/report gate is implemented.
+A run now transitions through `GENERATING_REPORT` and reaches `SUCCEEDED` only after the PDF artifact and report metadata are persisted successfully.
 
 ## Validation
 

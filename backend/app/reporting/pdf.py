@@ -119,7 +119,7 @@ def _records_table(records: list[tuple[str, dict]], styles) -> Table:
         malware = ", ".join(record.get("stealer_families") or record.get("malware_ids") or ()) or "—"
         actor = ", ".join(record.get("threat_actors") or ()) or "—"
         links = record.get("source_links") or ()
-        link_text = "<br/>".join(f'<link href="{escape(str(link))}">{escape(str(link))}</link>' for link in links) or "—"
+        link_text = "<br/>".join(escape(str(link)) for link in links) or "—"
         values = [
             _dt(record.get("compromised_date")), _dt(record.get("date_detected")),
             _dt(record.get("first_seen")), _dt(record.get("last_seen")),
@@ -127,8 +127,8 @@ def _records_table(records: list[tuple[str, dict]], styles) -> Table:
             record.get("password"), ips, source, malware, actor, link_text,
         ]
         row = []
-        for index, value in enumerate(values):
-            row.append(Paragraph(str(value) if value not in (None, "") else "—", styles["cell"]))
+        for value in values:
+            row.append(_paragraph(value, styles["cell"]))
         rows.append(row)
     widths = [20, 20, 20, 20, 22, 25, 22, 20, 23, 24, 23, 38]
     table = Table(rows, colWidths=[w * 0.96 * mm / 4.0 for w in widths], repeatRows=1)
