@@ -24,7 +24,7 @@ GitHub `main` is the only implementation source of truth.
 
 ## Development status
 
-Architecture gates A1-A12 are closed. A13 is the end-to-end validation gate.
+Architecture gates A1-A13 are closed. A14 is the HONOR X9c device validation gate.
 
 ## Security
 
@@ -35,6 +35,8 @@ Real `.env`, Group-IB credentials, Android signing keys, generated databases, an
 **A11 — Report / PDF Generation — CLOSED**
 
 **A12 — Report History / Sharing / Saving — CLOSED**
+
+**A13 — End-to-End Validation — CLOSED**
 
 The backend now evaluates classified canonical records using fixed, auditable rules. Assessment output includes Activity Level, Assessment Confidence, Facts, Key Observations, Assessment, Recommended Analyst Attention, and Assessment Basis. No LLM is used for the assessment.
 
