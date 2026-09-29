@@ -41,7 +41,12 @@ class ApiClient(private val context: Context) {
     fun getBaseUrl(): String = prefs.getString("backend_url", "")?.trim()?.trimEnd('/') ?: ""
 
     fun setBaseUrl(value: String) {
-        prefs.edit().putString("backend_url", value.trim().trimEnd('/')).apply()
+        val normalized = value.trim().trimEnd('/')
+        if (normalized.isNotBlank()) {
+            val url = URL(normalized)
+            require(url.protocol.equals("https", ignoreCase = true)) { "Backend URL must use HTTPS." }
+        }
+        prefs.edit().putString("backend_url", normalized).apply()
     }
 
     fun startRun(): RunCreate {
@@ -115,6 +120,8 @@ class ApiClient(private val context: Context) {
     private fun open(method: String, path: String): HttpURLConnection {
         val base = getBaseUrl()
         require(base.isNotBlank()) { "Backend URL is not configured." }
+        val parsed = URL(base)
+        require(parsed.protocol.equals("https", ignoreCase = true)) { "Backend URL must use HTTPS." }
         val connection = (URL("$base$path").openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = 15_000
