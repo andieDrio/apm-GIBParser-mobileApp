@@ -187,7 +187,6 @@ def generate_report(db, run: RunModel) -> tuple[str, str]:
         "Group-IB Threat Intelligence Report",
         pagesize=landscape(A4),
         rightMargin=15 * mm, leftMargin=15 * mm, topMargin=15 * mm, bottomMargin=16 * mm,
-        title="Group-IB Threat Intelligence Report",
         author="APM",
     )
     story = [
