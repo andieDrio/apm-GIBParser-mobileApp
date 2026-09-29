@@ -17,7 +17,7 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 
 def _error_response(code: str, message: str, *, report_id: str | None = None, status_code: int) -> JSONResponse:
     body = ErrorResponse(
-        error=ErrorBody(code=code, message=message, run_id=report_id)
+        error=ErrorBody(code=code, message=message, report_id=report_id)
     ).model_dump(mode="json")
     return JSONResponse(status_code=status_code, content=body)
 
