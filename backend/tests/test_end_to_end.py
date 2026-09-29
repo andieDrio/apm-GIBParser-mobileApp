@@ -78,7 +78,7 @@ class FakeGroupIBClient:
 def _run_success(tmp_path, monkeypatch) -> tuple[str, str]:
     _reset_db()
     monkeypatch.setattr("app.core.config.settings.group_ib_username", "e2e-user")
-    monkeypatch.setattr("app.core.config.settings.group_ib_api_token", "e2e-token")
+    monkeypatch.setattr("app.core.config.settings.group_ib_api_token", SecretStr("fixture-value"))
     monkeypatch.setattr("app.core.config.settings.group_ib_latest_lookback_days", 7)
     monkeypatch.setattr("app.reporting.pdf.REPORT_ROOT", tmp_path)
     monkeypatch.setattr("app.api.reports.REPORT_ROOT", tmp_path)
@@ -133,7 +133,7 @@ def test_full_run_produces_authoritative_report_and_download(tmp_path, monkeypat
 def test_repeat_execution_classifies_same_observation_as_repeat(tmp_path, monkeypatch):
     _reset_db()
     monkeypatch.setattr("app.core.config.settings.group_ib_username", "e2e-user")
-    monkeypatch.setattr("app.core.config.settings.group_ib_api_token", "e2e-token")
+    monkeypatch.setattr("app.core.config.settings.group_ib_api_token", SecretStr("fixture-value"))
     monkeypatch.setattr("app.reporting.pdf.REPORT_ROOT", tmp_path)
 
     class StableFakeClient(FakeGroupIBClient):
@@ -171,7 +171,7 @@ def test_repeat_execution_classifies_same_observation_as_repeat(tmp_path, monkey
 def test_authentication_failure_never_becomes_success(monkeypatch, tmp_path):
     _reset_db()
     monkeypatch.setattr("app.core.config.settings.group_ib_username", "e2e-user")
-    monkeypatch.setattr("app.core.config.settings.group_ib_api_token", "e2e-token")
+    monkeypatch.setattr("app.core.config.settings.group_ib_api_token", SecretStr("fixture-value"))
     monkeypatch.setattr("app.reporting.pdf.REPORT_ROOT", tmp_path)
 
     from app.groupib.client import AccountGroupPage, GroupIBAuthenticationError
@@ -201,7 +201,7 @@ def test_authentication_failure_never_becomes_success(monkeypatch, tmp_path):
 def test_malformed_provider_response_never_reaches_classification(monkeypatch, tmp_path):
     _reset_db()
     monkeypatch.setattr("app.core.config.settings.group_ib_username", "e2e-user")
-    monkeypatch.setattr("app.core.config.settings.group_ib_api_token", "e2e-token")
+    monkeypatch.setattr("app.core.config.settings.group_ib_api_token", SecretStr("fixture-value"))
     monkeypatch.setattr("app.reporting.pdf.REPORT_ROOT", tmp_path)
 
     from app.groupib.client import AccountGroupPage, GroupIBSchemaError
