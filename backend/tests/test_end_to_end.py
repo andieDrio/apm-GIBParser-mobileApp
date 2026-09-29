@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 from pydantic import SecretStr
 from fastapi.testclient import TestClient
 
-from app.api.runs import orchestrator
-from app.db.models import Base, ReportModel, RunModel
+from app.db.models import Base, RunModel
 from app.db.session import SessionLocal, engine
 from app.main import app
 from app.orchestration.run_service import RunOrchestrator
-import app.api.reports as reports_api
-import app.reporting.pdf as pdf_reporting
 
 
 def _reset_db() -> None:
