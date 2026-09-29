@@ -35,8 +35,12 @@ class GibViewModel(application: Application) : AndroidViewModel(application) {
         private set
 
     fun setBackendUrl(value: String) {
-        api.setBaseUrl(value)
-        state.value = state.value.copy(backendUrl = api.getBaseUrl(), error = null, message = "Backend URL saved.")
+        try {
+            api.setBaseUrl(value)
+            state.value = state.value.copy(backendUrl = api.getBaseUrl(), error = null, message = "Backend URL saved.")
+        } catch (e: IllegalArgumentException) {
+            state.value = state.value.copy(error = e.message ?: "Invalid backend URL.")
+        }
     }
 
     fun generateReport() {
