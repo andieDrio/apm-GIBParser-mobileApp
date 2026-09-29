@@ -280,7 +280,6 @@ Missing reports and missing artifacts return structured errors without exposing 
 
 ## Later Gates
 
-- A12 — Report history and mobile sharing/saving
 - A13 — End-to-end validation
 - A14 — HONOR X9c device validation
 
