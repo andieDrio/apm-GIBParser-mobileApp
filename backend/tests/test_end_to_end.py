@@ -128,6 +128,7 @@ def test_full_run_produces_authoritative_report_and_download(tmp_path, monkeypat
         assert download.status_code == 200
         assert download.headers["content-type"].startswith("application/pdf")
         assert download.content.startswith(b"%PDF")
+        assert b"fixture-value" not in download.content
 
 
 def test_repeat_execution_classifies_same_observation_as_repeat(tmp_path, monkeypatch):
@@ -136,6 +137,8 @@ def test_repeat_execution_classifies_same_observation_as_repeat(tmp_path, monkey
     monkeypatch.setattr("app.core.config.settings.group_ib_api_token", SecretStr("fixture-value"))
     monkeypatch.setattr("app.reporting.pdf.REPORT_ROOT", tmp_path)
 
+    stable_now = datetime.now(timezone.utc)
+
     class StableFakeClient(FakeGroupIBClient):
         def get_account_group_page(self, **_kwargs):
             from app.groupib.client import AccountGroupPage
@@ -143,7 +146,7 @@ def test_repeat_execution_classifies_same_observation_as_repeat(tmp_path, monkey
             return AccountGroupPage(
                 count=1,
                 result_id=None,
-                items=(_provider_record(now=datetime.now(timezone.utc)),),
+                items=(_provider_record(now=stable_now),),
             )
 
     run_orchestrator = RunOrchestrator(client_factory=StableFakeClient)
@@ -195,6 +198,8 @@ def test_authentication_failure_never_becomes_success(monkeypatch, tmp_path):
         assert run is not None
         assert run.status == "FAILED"
         assert run.error_code == "GROUPIB_AUTH_FAILED"
+        assert run.error_message == "Unable to authenticate with Group-IB."
+        assert "fixture-value" not in (run.error_message or "")
         assert run.report is None
 
 
