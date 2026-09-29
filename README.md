@@ -38,6 +38,8 @@ Real `.env`, Group-IB credentials, Android signing keys, generated databases, an
 
 **A13 — End-to-End Validation — CLOSED**
 
+**A14 — HONOR X9c Device Validation — IMPLEMENTED / VALIDATION PENDING DEVICE**
+
 The backend now evaluates classified canonical records using fixed, auditable rules. Assessment output includes Activity Level, Assessment Confidence, Facts, Key Observations, Assessment, Recommended Analyst Attention, and Assessment Basis. No LLM is used for the assessment.
 
 A run now transitions through `GENERATING_REPORT` and reaches `SUCCEEDED` only after the PDF artifact and report metadata are persisted successfully.
