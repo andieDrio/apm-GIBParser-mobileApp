@@ -131,7 +131,7 @@ def _records_table(records: list[tuple[str, dict]], styles) -> Table:
             row.append(_paragraph(value, styles["cell"]))
         rows.append(row)
     widths = [20, 20, 20, 20, 22, 25, 22, 20, 23, 24, 23, 38]
-    table = Table(rows, colWidths=[w * 0.96 * mm / 4.0 for w in widths], repeatRows=1)
+    table = Table(rows, colWidths=[w * 0.96 * mm for w in widths], repeatRows=1)
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F2937")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
