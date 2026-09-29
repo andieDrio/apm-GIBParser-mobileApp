@@ -12,11 +12,11 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def create_run(db: Session, idempotency_key: str | None) -> RunModel:
+def create_or_get_run(db: Session, idempotency_key: str | None) -> tuple[RunModel, bool]:
     if idempotency_key:
         existing = db.scalar(select(RunModel).where(RunModel.idempotency_key == idempotency_key))
         if existing:
-            return existing
+            return existing, False
     run = RunModel(run_id=str(uuid4()), idempotency_key=idempotency_key, status="QUEUED", created_at=utcnow())
     db.add(run)
     try:
@@ -26,10 +26,14 @@ def create_run(db: Session, idempotency_key: str | None) -> RunModel:
         if idempotency_key:
             existing = db.scalar(select(RunModel).where(RunModel.idempotency_key == idempotency_key))
             if existing:
-                return existing
+                return existing, False
         raise
     db.refresh(run)
-    return run
+    return run, True
+
+
+def create_run(db: Session, idempotency_key: str | None) -> RunModel:
+    return create_or_get_run(db, idempotency_key)[0]
 
 
 def get_run(db: Session, run_id: str) -> RunModel | None:
@@ -43,6 +47,20 @@ def transition_run(db: Session, run: RunModel, status: str, **fields: object) ->
     db.commit()
     db.refresh(run)
     return run
+
+
+def reconcile_nonterminal_runs(db: Session) -> int:
+    statuses = ("QUEUED", "COLLECTING", "NORMALIZING", "CLASSIFYING", "ASSESSING", "GENERATING_REPORT")
+    runs = list(db.scalars(select(RunModel).where(RunModel.status.in_(statuses))))
+    now = utcnow()
+    for run in runs:
+        run.status = "FAILED"
+        run.completed_at = now
+        run.error_code = "SERVER_RESTARTED"
+        run.error_message = "Run was interrupted by backend restart and was not resumed."
+    if runs:
+        db.commit()
+    return len(runs)
 
 
 def add_report_record(

@@ -1,0 +1,150 @@
+from __future__ import annotations
+
+import asyncio
+import time
+from datetime import datetime, timedelta, timezone
+from threading import Lock
+from typing import Callable
+
+from app.core.config import settings
+from app.db.repository import get_run, transition_run
+from app.db.session import SessionLocal
+from app.groupib.client import (
+    GroupIBAuthenticationError,
+    GroupIBClient,
+    GroupIBConfigurationError,
+    GroupIBRateLimitError,
+    GroupIBSchemaError,
+    GroupIBUnavailableError,
+)
+
+
+TERMINAL_STATUSES = {"SUCCEEDED", "FAILED", "PARTIAL"}
+PROGRESS = {
+    "QUEUED": 0,
+    "COLLECTING": 20,
+    "NORMALIZING": 40,
+    "CLASSIFYING": 60,
+    "ASSESSING": 75,
+    "GENERATING_REPORT": 90,
+    "SUCCEEDED": 100,
+    "FAILED": 100,
+    "PARTIAL": 100,
+}
+
+
+class RunOrchestrator:
+    """In-process run executor; durable run state remains authoritative in SQLite."""
+
+    def __init__(self, client_factory: Callable[..., GroupIBClient] = GroupIBClient) -> None:
+        self._client_factory = client_factory
+        self._active: set[str] = set()
+        self._lock = Lock()
+
+    def schedule(self, run_id: str) -> None:
+        with self._lock:
+            if run_id in self._active:
+                return
+            self._active.add(run_id)
+        task = asyncio.create_task(self.execute(run_id))
+        task.add_done_callback(lambda _: self._release(run_id))
+
+    def _release(self, run_id: str) -> None:
+        with self._lock:
+            self._active.discard(run_id)
+
+    async def execute(self, run_id: str) -> None:
+        await asyncio.to_thread(self._execute_sync, run_id)
+
+    def _execute_sync(self, run_id: str) -> None:
+        with SessionLocal() as db:
+            run = get_run(db, run_id)
+            if run is None or run.status in TERMINAL_STATUSES:
+                return
+            now = datetime.now(timezone.utc)
+            transition_run(db, run, "COLLECTING", started_at=run.started_at or now, error_code=None, error_message=None)
+
+            try:
+                items = self._collect_with_retry()
+                run = get_run(db, run_id)
+                if run is None:
+                    return
+                transition_run(db, run, "NORMALIZING", records_retrieved=len(items))
+
+                # Canonical normalization is the next architecture gate. Do not fabricate
+                # canonical records or mark the run successful before that contract exists.
+                run = get_run(db, run_id)
+                transition_run(
+                    db,
+                    run,
+                    "PARTIAL",
+                    completed_at=datetime.now(timezone.utc),
+                    error_code="NORMALIZATION_PENDING",
+                    error_message="Group-IB collection completed, but canonical normalization is not enabled yet.",
+                )
+            except GroupIBConfigurationError as exc:
+                self._fail(db, run_id, "GROUPIB_NOT_CONFIGURED", str(exc))
+            except GroupIBAuthenticationError as exc:
+                self._fail(db, run_id, "GROUPIB_AUTH_FAILED", str(exc))
+            except GroupIBRateLimitError as exc:
+                self._fail(db, run_id, "GROUPIB_RATE_LIMITED", str(exc))
+            except GroupIBSchemaError as exc:
+                self._fail(db, run_id, "GROUPIB_INVALID_RESPONSE", str(exc))
+            except GroupIBUnavailableError as exc:
+                self._fail(db, run_id, "GROUPIB_UNAVAILABLE", str(exc))
+            except Exception:
+                self._fail(db, run_id, "RUN_EXECUTION_FAILED", "Run execution failed.")
+
+    def _collect_with_retry(self) -> list[dict]:
+        last_error: GroupIBUnavailableError | None = None
+        for attempt in range(3):
+            try:
+                return self._collect_once()
+            except GroupIBUnavailableError as exc:
+                last_error = exc
+                if attempt == 2:
+                    raise
+                time.sleep(0.5 * (2**attempt))
+        assert last_error is not None
+        raise last_error
+
+    def _collect_once(self) -> list[dict]:
+        username = settings.group_ib_username
+        token = settings.group_ib_api_token.get_secret_value() if settings.group_ib_api_token else None
+        with self._client_factory(
+            username or "",
+            token or "",
+            base_url=settings.group_ib_base_url,
+            timeout_seconds=settings.request_timeout_seconds,
+        ) as client:
+            evaluated_at = datetime.now(timezone.utc)
+            date_from = (evaluated_at - timedelta(days=settings.group_ib_latest_lookback_days)).date().isoformat()
+            date_to = evaluated_at.date().isoformat()
+            result_id: str | None = None
+            seen_result_ids: set[str] = set()
+            items: list[dict] = []
+
+            while True:
+                page = client.get_account_group_page(
+                    date_from=date_from,
+                    date_to=date_to,
+                    limit=500,
+                    result_id=result_id,
+                )
+                items.extend(dict(item) for item in page.items)
+                if page.result_id is None:
+                    return items
+                if page.result_id in seen_result_ids or page.result_id == result_id:
+                    raise GroupIBSchemaError("Group-IB pagination returned a repeated resultId.")
+                seen_result_ids.add(page.result_id)
+                result_id = page.result_id
+
+    def _fail(self, db, run_id: str, code: str, message: str) -> None:
+        run = get_run(db, run_id)
+        if run is None:
+            return
+        transition_run(db, run, "FAILED", completed_at=datetime.now(timezone.utc), error_code=code, error_message=message)
+
+
+def progress_for_status(status: str) -> int:
+    return PROGRESS.get(status, 0)

@@ -12,24 +12,21 @@ The backend owns Group-IB credentials and intelligence processing. The Android a
 
 ## Development status
 
-Architecture gates A1-A5 are locked. A6 establishes the backend implementation foundation.
+Architecture gates A1-A7 are locked. A8 establishes the executable run API and orchestration control plane.
 
 ## Security
 
 Real `.env`, Group-IB credentials, Android signing keys, generated databases, and build artifacts are ignored by Git.
 
-
 ## Current Architecture Gate
 
-**A7 — SQLite Persistence & Durable History — IMPLEMENTED / VALIDATED**
+**A8 — Run API + Orchestration — IMPLEMENTED / VALIDATED**
 
-The backend now defines durable SQLite persistence for runs, reports, compromise history, provider records, observations, report records, assessments, and data quality. Database uniqueness protects provider/identity history and run-level report-record associations, while idempotency keys resolve repeated run requests to the same persisted run. UTC timestamps are normalized through a SQLite-safe SQLAlchemy type.
+The backend exposes `POST /api/v1/runs` and `GET /api/v1/runs/{run_id}` with durable SQLite run state, idempotency handling, bounded Group-IB collection retries, pagination-loop protection, and explicit terminal failure/partial semantics. Canonical normalization remains a separate gate and is never fabricated as a successful stage.
 
-Validation:
+## Validation
 
 ```text
 python -m compileall -q app tests
 python -m pytest -q
-10 passed
 ```
-

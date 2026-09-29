@@ -15,7 +15,6 @@ Mobile -> FastAPI -> Group-IB -> validate -> normalize -> history/classify -> as
 
 Architecture gates A1-A5 are locked. A6 establishes the implementation foundation.
 
-
 ## A7 — SQLite Persistence & Durable History
 
 The mobile backend persists authoritative execution state in SQLite. The persistence model contains:
@@ -36,3 +35,30 @@ data_quality
 History upserts preserve earliest provider timeline values, update the latest local observation, and persist the latest classification and observation fingerprint. Observation fingerprints remain separate from plaintext credentials and must be supplied by the canonical normalization/classification layer.
 
 SQLite timestamps are normalized to UTC and returned as timezone-aware values. Generated database files remain outside source control.
+
+## A8 — Run API + Orchestration
+
+The backend exposes:
+
+```text
+POST /api/v1/runs
+GET  /api/v1/runs/{run_id}
+```
+
+`POST /runs` accepts an optional `Idempotency-Key`. The persisted run is created once and repeated requests resolve to the same `run_id`. The executor runs asynchronously in-process while SQLite remains the authoritative run-state store.
+
+The executor enforces the locked lifecycle:
+
+```text
+QUEUED
+  -> COLLECTING
+  -> NORMALIZING
+  -> CLASSIFYING
+  -> ASSESSING
+  -> GENERATING_REPORT
+  -> SUCCEEDED
+```
+
+Terminal failure states are `FAILED` or `PARTIAL`. A backend restart does not silently resume an interrupted run; non-terminal runs are reconciled to `FAILED` with `SERVER_RESTARTED` so an incomplete execution can never be mistaken for an authoritative result.
+
+A8 implements real Group-IB collection, bounded network retries, pagination-loop protection, persisted record counts, and explicit provider error mapping. Canonical normalization is intentionally not fabricated at this gate. If collection completes before the normalization gate exists, the run terminates as `PARTIAL` with `NORMALIZATION_PENDING` rather than being reported as successful.

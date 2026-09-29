@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
+
 from pydantic import BaseModel, Field
 
 
@@ -13,10 +14,6 @@ class RunStatus(StrEnum):
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
     PARTIAL = "PARTIAL"
-
-
-class RunCreateRequest(BaseModel):
-    model_config = {"extra": "forbid"}
 
 
 class RunCreateResponse(BaseModel):
