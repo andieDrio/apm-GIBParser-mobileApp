@@ -6,6 +6,8 @@
         android:allowBackup="false"
         android:label="GIB Mobile Threat Intelligence Reporter"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="false"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/Theme.GibMobile">
         <activity
             android:name=".MainActivity"
