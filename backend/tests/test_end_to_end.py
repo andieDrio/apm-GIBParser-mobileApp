@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from pydantic import SecretStr
 from fastapi.testclient import TestClient
 
 from app.api.runs import orchestrator
@@ -56,7 +57,7 @@ def _provider_record(*, now: datetime, password: str = "e2e-operational-password
 class FakeGroupIBClient:
     def __init__(self, username: str, api_token: str, *, base_url: str, timeout_seconds: float) -> None:
         assert username == "e2e-user"
-        assert api_token == "e2e-token"
+        assert api_token == "fixture-value"
 
     def __enter__(self):
         return self
