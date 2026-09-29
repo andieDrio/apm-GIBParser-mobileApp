@@ -189,9 +189,6 @@ def generate_report(db, run: RunModel) -> tuple[str, str]:
         rightMargin=15 * mm, leftMargin=15 * mm, topMargin=15 * mm, bottomMargin=16 * mm,
         author="APM",
     )
-    # Keep generated page content uncompressed so deterministic artifact checks can
-    # verify required operational report fields without a PDF parser dependency.
-    doc.pageCompression = 0
     story = [
         Spacer(1, 10 * mm),
         Paragraph("GROUP-IB THREAT INTELLIGENCE REPORT", styles["title"]),
