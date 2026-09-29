@@ -105,7 +105,7 @@ def get_report(report_id: str) -> ReportDetailResponse | JSONResponse:
         return ReportDetailResponse(**summary.model_dump(), completed_at=run.completed_at if run else None)
 
 
-@router.get("/{report_id}/download", responses={404: {"model": ErrorResponse}})
+@router.get("/{report_id}/download", response_model=None, responses={404: {"model": ErrorResponse}})
 def download_report(report_id: str) -> FileResponse | JSONResponse:
     with SessionLocal() as db:
         report = db.get(ReportModel, report_id)
