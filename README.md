@@ -24,7 +24,7 @@ GitHub `main` is the only implementation source of truth.
 
 ## Development status
 
-Architecture gates A1-A10 are closed. A11 establishes authoritative ReportLab PDF generation.
+Architecture gates A1-A10 are closed. A11 established authoritative ReportLab PDF generation. A12 establishes report history and PDF delivery for the mobile client.
 
 ## Security
 
@@ -32,9 +32,9 @@ Real `.env`, Group-IB credentials, Android signing keys, generated databases, an
 
 ## Current Architecture Gate
 
-**A11 — Report / PDF Generation — CLOSED
+**A11 — Report / PDF Generation — CLOSED**
 
-A12 — Report History / Sharing / Saving — IMPLEMENTED / VALIDATION PENDING LOCAL EXECUTION**
+**A12 — Report History / Sharing / Saving — IMPLEMENTED / VALIDATION PENDING LOCAL EXECUTION**
 
 The backend now evaluates classified canonical records using fixed, auditable rules. Assessment output includes Activity Level, Assessment Confidence, Facts, Key Observations, Assessment, Recommended Analyst Attention, and Assessment Basis. No LLM is used for the assessment.
 
