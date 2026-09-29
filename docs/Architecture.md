@@ -309,6 +309,16 @@ Required end-to-end assertions include:
 - provider schema failures become `FAILED / GROUPIB_INVALID_RESPONSE` with no report;
 - no live Group-IB credential is required by automated A13 tests.
 
+## A13 Validation Result
+
+A13 is closed. Local executable validation completed with:
+
+```text
+36 passed, 1 warning
+```
+
+The warning is the existing Starlette deprecation notice from FastAPI's TestClient dependency path and did not cause a test failure. The end-to-end suite validates the complete backend lifecycle with deterministic provider-boundary fixtures and does not require live Group-IB credentials.
+
 ## Later Gates
 
 - A14 — HONOR X9c device validation
