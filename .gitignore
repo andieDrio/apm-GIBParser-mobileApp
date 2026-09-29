@@ -11,6 +11,9 @@ backend/data/
 *.sqlite
 *.sqlite3
 *.log
+.gradle/
+build/
+.idea/
 mobile/.gradle/
 mobile/build/
 mobile/.idea/
