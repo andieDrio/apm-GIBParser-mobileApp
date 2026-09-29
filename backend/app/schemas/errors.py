@@ -6,6 +6,7 @@ class ErrorBody(BaseModel):
     message: str
     retryable: bool = False
     run_id: str | None = None
+    report_id: str | None = None
 
 
 class ErrorResponse(BaseModel):
