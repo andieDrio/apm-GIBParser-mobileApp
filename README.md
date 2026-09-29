@@ -1,18 +1,31 @@
 # Group-IB Mobile Threat Intelligence Reporter
 
-Android-first mobile application with a secure FastAPI backend for Group-IB collection, normalization, durable history, deterministic classification, assessment, and PDF reporting.
+Android-first mobile application with a secure FastAPI backend for Group-IB collection, normalization, durable history, deterministic classification, deterministic assessment, and PDF reporting.
 
 ## Repository layout
 
 - `backend/` — FastAPI backend and authoritative intelligence pipeline
 - `mobile/` — Native Android/Kotlin application
-- `docs/` — architecture and API specifications
+- `docs/` — architecture and permanent development baselines
 
 The backend owns Group-IB credentials and intelligence processing. The Android app never calls Group-IB directly.
 
+## Permanent development baselines
+
+Every implementation cycle must read:
+
+```text
+README.md
+docs/Architecture.md
+docs/MasterInstruction.md
+docs/MasterInstructionLoop.md
+```
+
+GitHub `main` is the only implementation source of truth.
+
 ## Development status
 
-Architecture gates A1-A8 are locked. A9 establishes canonical Group-IB normalization and durable classification input.
+Architecture gates A1-A9 are locked. A10 establishes deterministic Daily Threat Assessment.
 
 ## Security
 
@@ -20,13 +33,15 @@ Real `.env`, Group-IB credentials, Android signing keys, generated databases, an
 
 ## Current Architecture Gate
 
-**A9 — Canonical Normalization — IMPLEMENTED / VALIDATED**
+**A10 — Deterministic Daily Threat Assessment — IMPLEMENTED / VALIDATED**
 
-The backend exposes `POST /api/v1/runs` and `GET /api/v1/runs/{run_id}` with durable SQLite run state, idempotency handling, bounded Group-IB collection retries, pagination-loop protection, canonical normalization, deterministic seven-day classification input, and explicit terminal failure/partial semantics. Assessment and PDF generation remain later gates.
+The backend now evaluates classified canonical records using fixed, auditable rules. Assessment output includes Activity Level, Assessment Confidence, Facts, Key Observations, Assessment, Recommended Analyst Attention, and Assessment Basis. No LLM is used for the assessment.
+
+A run intentionally remains `PARTIAL / REPORT_GENERATION_PENDING` until the later PDF/report gate is implemented.
 
 ## Validation
 
-```text
+```bash
 python -m compileall -q app tests
 python -m pytest -q
 ```

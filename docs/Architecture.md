@@ -1,23 +1,81 @@
-# Architecture
+# Architecture Baseline
 
-## Locked stack
+## Project Identity
 
-- Mobile: Native Android, Kotlin, Jetpack Compose
+**Group-IB Mobile Threat Intelligence Reporter**
+
+Purpose:
+
+```text
+OPEN APP
+  ↓
+RUN GROUP-IB COLLECTION
+  ↓
+NORMALIZE
+  ↓
+CLASSIFY
+  ↓
+GENERATE DETERMINISTIC ASSESSMENT
+  ↓
+GENERATE REPORT
+  ↓
+VIEW / SHARE / SAVE PDF
+```
+
+The product is a focused Android mobile reporting application. It is not a SIEM, SOAR, ThreatForge, generic CTI platform, or multi-tenant platform.
+
+## Locked Stack
+
+- Mobile: Native Android
+- Language: Kotlin
+- UI: Jetpack Compose
 - Backend: FastAPI/Python
-- Initial persistence: SQLite
-- PDF: ReportLab backend-side
+- Initial database: SQLite
+- PDF generation: ReportLab backend-side
 - Transport: HTTPS/TLS
-- Group-IB: backend-only
+- Group-IB credentials/API access: backend-only
+- Android credential protection: Android Keystore-backed mechanisms
+- PDF sharing: Android FileProvider/content URI
+- PDF save: Storage Access Framework
 
-## Processing
+The existing `andieDrio/apm-GIBParser` repository is reference-only and must not be modified unless explicitly requested.
 
-Mobile -> FastAPI -> Group-IB -> validate -> normalize -> history/classify -> assess -> PDF -> mobile.
+## Security Boundary
 
-Architecture gates A1-A8 are locked. A6 establishes the implementation foundation.
+```text
+HONOR X9c
+   │ HTTPS/TLS
+   ▼
+GIB Mobile Backend
+   │
+   │ Group-IB credentials
+   ▼
+Group-IB TI&A API
+```
+
+The Group-IB token must never be embedded in the APK, returned to the mobile client, logged, or written into reports.
+
+## Authoritative Backend Flow
+
+```text
+COLLECTING
+  ↓
+NORMALIZING
+  ↓
+CLASSIFYING
+  ↓
+ASSESSING
+  ↓
+GENERATING_REPORT
+  ↓
+SUCCEEDED
+```
+
+Terminal incomplete states are `FAILED` and `PARTIAL`. A `SUCCEEDED` run is authoritative only when the required downstream artifact for that gate has been persisted successfully.
 
 ## A7 — SQLite Persistence & Durable History
 
-The mobile backend persists authoritative execution state in SQLite. The persistence model contains:
+Authoritative tables:
 
 ```text
 runs
@@ -30,47 +88,130 @@ assessments
 data_quality
 ```
 
-`runs.idempotency_key` is unique so repeated requests can resolve to the same run. `compromise_history` is unique on `(provider, compromise_identity)`, and `report_records` is unique on `(run_id, provider, compromise_identity)`. These constraints are database-enforced rather than application-only checks.
-
-History upserts preserve earliest provider timeline values, update the latest local observation, and persist the latest classification and observation fingerprint. Observation fingerprints remain separate from plaintext credentials and must be supplied by the canonical normalization/classification layer.
-
-SQLite timestamps are normalized to UTC and returned as timezone-aware values. Generated database files remain outside source control.
+Database uniqueness is authoritative for logical history and run/report record association.
 
 ## A8 — Run API + Orchestration
 
-The backend exposes:
+Endpoints:
 
 ```text
 POST /api/v1/runs
 GET  /api/v1/runs/{run_id}
+GET  /api/v1/status
 ```
 
-`POST /runs` accepts an optional `Idempotency-Key`. The persisted run is created once and repeated requests resolve to the same `run_id`. The executor runs asynchronously in-process while SQLite remains the authoritative run-state store.
-
-The executor enforces the locked lifecycle:
-
-```text
-QUEUED
-  -> COLLECTING
-  -> NORMALIZING
-  -> CLASSIFYING
-  -> ASSESSING
-  -> GENERATING_REPORT
-  -> SUCCEEDED
-```
-
-Terminal failure states are `FAILED` or `PARTIAL`. A backend restart does not silently resume an interrupted run; non-terminal runs are reconciled to `FAILED` with `SERVER_RESTARTED` so an incomplete execution can never be mistaken for an authoritative result.
-
-A8 implements real Group-IB collection, bounded network retries, pagination-loop protection, persisted record counts, and explicit provider error mapping.
+Run creation supports `Idempotency-Key`. Group-IB collection has bounded retry behavior and pagination-loop protection. Backend restart reconciles non-terminal runs to `FAILED / SERVER_RESTARTED`.
 
 ## A9 — Canonical Normalization
 
-A9 introduces the authoritative internal Group-IB canonical record in `app.domain.normalization`. Provider `account_group` items are normalized without inventing values. Provider record ID is preferred for logical identity; otherwise a deterministic SHA-256 fallback identity is derived from stable account/domain/timeline/source/event fields.
+A9 established the canonical Group-IB record contract.
 
-Canonical dates are parsed as UTC-aware values. Invalid optional timestamps, URLs, IPs, and event counts are omitted from canonical values and recorded as data-quality warnings. Missing values remain null/empty rather than being inferred. Record ordering is deterministic by latest seen time, first seen time, then identity.
+Rules:
+- provider record ID is preferred identity;
+- deterministic SHA-256 fallback identity is used when necessary;
+- dates are UTC-aware;
+- missing data remains null/empty;
+- invalid optional values become data-quality warnings;
+- ordering is deterministic;
+- observation fingerprints exclude plaintext password and all credentials/secrets;
+- no intelligence is fabricated.
 
-The observation fingerprint is SHA-256 over stable canonical evidence only. It excludes plaintext passwords, provider credentials, authorization headers, cookies, retrieval timestamps, run IDs, and report IDs. Password presence is represented separately so a password change alone does not turn an otherwise identical observation into a recycled event.
+Classification:
 
-Classification persistence uses the locked seven-day policy: unknown identities with a usable compromise/detection timeline inside the window are `NEW`; older, future-dated, or timeline-missing unknown identities are `OLD_HISTORICAL`; known identities with the same fingerprint are `REPEAT`; changed known observations are `RESEEN_RECYCLED`. History, provider records, observations, and run-level canonical records are persisted through the same database transaction.
+```text
+Unknown + usable event <= 7 days   -> NEW
+Unknown + older/future/missing      -> OLD_HISTORICAL
+Known + same fingerprint            -> REPEAT
+Known + changed fingerprint        -> RESEEN_RECYCLED
+```
 
-A9 completes the collection -> normalization -> classification path. The run intentionally terminates as `PARTIAL` with `ASSESSMENT_PENDING` because deterministic assessment and PDF generation belong to later architecture gates.
+## A10 — Deterministic Daily Threat Assessment
+
+A10 establishes the authoritative assessment engine. It is deterministic, auditable, evidence-based, and contains no LLM-generated conclusions.
+
+### Inputs
+
+- canonical records for the current run
+- classification for every canonical record
+- normalization warning count
+- previous baseline availability
+- evaluation timestamp
+
+### Activity Level
+
+Activity level is derived only from NEW records:
+
+| NEW records | Affected domains | Activity Level |
+|---:|---:|---|
+| 0 | any | NONE_OBSERVED |
+| 1–2 | 0–1 | LOW |
+| 3–5 | 0–3 | MODERATE |
+| 6–10 | 0–5 | HIGH |
+| above those thresholds | above those thresholds | CRITICAL |
+
+The rules are fixed and executable; no subjective scoring is introduced.
+
+### Assessment Confidence
+
+- **HIGH**: no normalization warnings and a previous baseline is available.
+- **MEDIUM**: assessment is usable but baseline is unavailable or warnings exist.
+- **LOW**: no records were evaluated or normalization warnings exceed the evaluated record count.
+
+Confidence describes assessment data quality/coverage, not certainty that an organization is compromised or safe.
+
+### Assessment Content
+
+Every assessment persists:
+
+- Assessment ID
+- Run ID
+- Activity Level
+- Assessment Confidence
+- Facts
+- Key Observations
+- Assessment
+- Recommended Analyst Attention
+- Assessment Basis
+
+The assessment must explicitly distinguish observed Group-IB intelligence from conclusions that cannot be established from absence of data.
+
+If zero NEW records are observed, the assessment must never state or imply that the environment is safe.
+
+### Deterministic Analyst Attention
+
+When NEW records exist, attention includes:
+- review affected compromised accounts;
+- follow the affected service's credential-reset/session-invalidation procedure;
+- correlate endpoint telemetry for observed infostealer families when present;
+- correlate victim IPs with available telemetry when present.
+
+When no NEW records exist:
+- continue routine monitoring;
+- explicitly avoid treating absence of NEW Group-IB records as proof of no compromise.
+
+### A10 Run Behavior
+
+After classification:
+
+```text
+CLASSIFYING
+   ↓
+ASSESSING
+   ↓
+persist AssessmentModel
+   ↓
+PARTIAL / REPORT_GENERATION_PENDING
+```
+
+The run remains `PARTIAL` until the later PDF/report gate is implemented. A10 therefore does not falsely claim a successful end-to-end report.
+
+## Later Gates
+
+- A11 — Report/PDF generation
+- A12 — Report history and mobile sharing/saving
+- A13 — End-to-end validation
+- A14 — HONOR X9c device validation
+
+## Baseline Rule
+
+This file and `docs/MasterInstructionLoop.md` are permanent project baselines. Every implementation cycle must read them before modifying code. If the current repository contradicts an older assumption, current `main` and these baseline documents are authoritative.

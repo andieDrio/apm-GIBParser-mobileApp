@@ -6,10 +6,16 @@ from datetime import datetime, timedelta, timezone
 from threading import Lock
 from typing import Callable
 
+from sqlalchemy import select
+
 from app.core.config import settings
-from app.db.history import classify_and_persist
+from app.db.assessment import save_assessment
+from app.db.history import classify_and_persist, get_history
+from app.db.models import CompromiseHistoryModel
 from app.db.repository import get_run, transition_run
 from app.db.session import SessionLocal
+from app.domain.assessment import build_assessment
+from app.domain.classification import Classification
 from app.domain.normalization import normalize_records
 from app.groupib.client import (
     GroupIBAuthenticationError, GroupIBClient, GroupIBConfigurationError,
@@ -55,31 +61,56 @@ class RunOrchestrator:
             try:
                 items = self._collect_with_retry()
                 run = get_run(db, run_id)
-                if run is None: return
+                if run is None:
+                    return
                 transition_run(db, run, "NORMALIZING", records_retrieved=len(items))
 
                 records = normalize_records(items, provider="groupib")
                 warnings = sum(len(record.warnings) for record in records)
                 run = get_run(db, run_id)
-                if run is None: return
+                if run is None:
+                    return
                 transition_run(db, run, "CLASSIFYING", records_normalized=len(records),
                                normalization_errors=warnings)
 
                 observed_at = datetime.now(timezone.utc)
-                classified = []
+                baseline_available = False
+                classified: list[tuple[object, Classification, str]] = []
                 for record in records:
+                    if get_history(db, record.provider, record.compromise_identity) is not None:
+                        baseline_available = True
                     classification, reason = classify_and_persist(
                         db, record, observed_at=observed_at, newness_window_days=7, run_id=run_id)
                     classified.append((record, classification, reason))
                 db.commit()
 
                 run = get_run(db, run_id)
-                if run is None: return
+                if run is None:
+                    return
+                transition_run(db, run, "ASSESSING",
+                               records_classified=len(classified),
+                               previous_baseline_available=baseline_available)
+
+                assessment = build_assessment(
+                    run_id=run_id,
+                    records=[item[0] for item in classified],
+                    classifications=[item[1] for item in classified],
+                    normalization_warnings=warnings,
+                    baseline_available=baseline_available,
+                    evaluated_at=observed_at,
+                )
+                save_assessment(db, assessment)
+                db.commit()
+
+                run = get_run(db, run_id)
+                if run is None:
+                    return
                 transition_run(
-                    db, run, "PARTIAL", records_classified=len(classified),
+                    db, run, "PARTIAL",
+                    records_classified=len(classified),
                     completed_at=datetime.now(timezone.utc),
-                    error_code="ASSESSMENT_PENDING",
-                    error_message="Canonical normalization and classification completed, but assessment/report generation is not enabled yet.",
+                    error_code="REPORT_GENERATION_PENDING",
+                    error_message="Deterministic assessment completed, but PDF report generation is not enabled yet.",
                 )
             except GroupIBConfigurationError as exc:
                 self._fail(db, run_id, "GROUPIB_NOT_CONFIGURED", str(exc))
@@ -101,7 +132,8 @@ class RunOrchestrator:
                 return self._collect_once()
             except GroupIBUnavailableError as exc:
                 last_error = exc
-                if attempt == 2: raise
+                if attempt == 2:
+                    raise
                 time.sleep(0.5 * (2 ** attempt))
         assert last_error is not None
         raise last_error
@@ -121,7 +153,8 @@ class RunOrchestrator:
                 page = client.get_account_group_page(date_from=date_from, date_to=date_to,
                                                      limit=500, result_id=result_id)
                 items.extend(dict(item) for item in page.items)
-                if page.result_id is None: return items
+                if page.result_id is None:
+                    return items
                 if page.result_id in seen_result_ids or page.result_id == result_id:
                     raise GroupIBSchemaError("Group-IB pagination returned a repeated resultId.")
                 seen_result_ids.add(page.result_id)
@@ -129,7 +162,8 @@ class RunOrchestrator:
 
     def _fail(self, db, run_id: str, code: str, message: str) -> None:
         run = get_run(db, run_id)
-        if run is None: return
+        if run is None:
+            return
         transition_run(db, run, "FAILED", completed_at=datetime.now(timezone.utc),
                        error_code=code, error_message=message)
 
