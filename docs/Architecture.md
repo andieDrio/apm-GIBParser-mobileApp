@@ -319,9 +319,28 @@ A13 is closed. Local executable validation completed with:
 
 The warning is the existing Starlette deprecation notice from FastAPI's TestClient dependency path and did not cause a test failure. The end-to-end suite validates the complete backend lifecycle with deterministic provider-boundary fixtures and does not require live Group-IB credentials.
 
-## Later Gates
+## A14 — HONOR X9c Device Validation
 
-- A14 — HONOR X9c device validation
+A14 establishes the native Android client required for device validation.
+
+### Mobile Implementation Baseline
+
+- Native Android application module: `mobile/`
+- Kotlin + Jetpack Compose
+- Backend-only Group-IB access through the FastAPI API
+- Backend URL stored as a non-secret local preference
+- HTTPS-only backend transport enforced by the mobile client
+- Primary action: `GENERATE GIB REPORT`
+- Run polling through `GET /api/v1/runs/{run_id}`
+- Automatic PDF retrieval after authoritative `SUCCEEDED`
+- Report history through `GET /api/v1/reports/history`
+- PDF viewing/sharing through Android `FileProvider` content URIs
+- PDF saving through Storage Access Framework
+- No Group-IB token or credential is stored in the APK
+
+The Android client uses the current Android Gradle Plugin 9.4 toolchain with API 37/Java 17 alignment. Device validation remains pending until the project is built and exercised on the HONOR X9c.
+
+## Later Gates
 
 ## Baseline Rule
 
