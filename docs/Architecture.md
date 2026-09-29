@@ -261,6 +261,23 @@ Required tests cover:
 - missing-assessment failure;
 - deterministic report sections and data source mapping.
 
+## A12 — Report History / Sharing / Saving
+
+A12 establishes the backend report-history and PDF-delivery contract consumed by the mobile application.
+
+### Report APIs
+
+```text
+GET /api/v1/reports/latest
+GET /api/v1/reports/history?limit=&offset=
+GET /api/v1/reports/{report_id}
+GET /api/v1/reports/{report_id}/download
+```
+
+Only `SUCCEEDED` reports are exposed as authoritative report history. History is ordered newest-first and returns run/report metadata plus NEW compromise count and PDF availability. PDF download is served only from a server-controlled report root and uses a server-generated report UUID filename; user input is never used as a filesystem path.
+
+Missing reports and missing artifacts return structured errors without exposing internal filesystem details.
+
 ## Later Gates
 
 - A12 — Report history and mobile sharing/saving
